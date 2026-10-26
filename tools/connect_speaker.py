@@ -62,13 +62,15 @@ def check_and_install_dependencies() -> None:
     check_pipewire_alsa = run_cmd("dpkg -s pipewire-alsa", shell=True)
     if check_pipewire_alsa.returncode != 0:
         needed_pkgs.append("pipewire-alsa")
-
     if needed_pkgs:
-        print(f"📦 Installing missing packages: {', '.join(needed_pkgs)}...")
-        pkgs_str = " ".join(needed_pkgs)
-        res = subprocess.run(f"sudo apt update && sudo apt install -y {pkgs_str}", shell=True)
-        if res.returncode != 0:
-            print("⚠️ Warning: Some packages could not be installed automatically.")
+        # Check if internet is reachable before trying apt
+        test_net = run_cmd("ping -c 1 -W 2 8.8.8.8", shell=True)
+        if test_net.returncode == 0:
+            print(f"📦 Installing missing packages: {', '.join(needed_pkgs)}...")
+            pkgs_str = " ".join(needed_pkgs)
+            subprocess.run(f"sudo apt update && sudo apt install -y {pkgs_str}", shell=True)
+        else:
+            print(f"⚠️ Offline: Cannot reach package mirrors. Continuing with installed drivers...")
     else:
         print("   ✅ Audio drivers and Bluetooth packages are installed.")
 
