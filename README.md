@@ -284,6 +284,37 @@ sudo nmcli connection modify "SMJV" connection.autoconnect yes connection.autoco
 
 ---
 
+## 🌐 Raspberry Pi Connect (Remote Access From Anywhere)
+
+[Raspberry Pi Connect](https://connect.raspberrypi.com) allows you to securely access your Raspberry Pi terminal and desktop from **any web browser anywhere in the world** — even when you are on completely different Wi-Fi networks, mobile data, or behind strict firewalls, without needing port-forwarding or a VPN.
+
+### 1-Command Setup
+
+On your Raspberry Pi, run:
+
+```bash
+python tools/setup_remote_connect.py
+```
+
+*(Or select option `[7]` from `python tools/run_pi.py`).*
+
+1. It installs `rpi-connect`, enables background lingering so it runs 24/7, and generates a verification link.
+2. Click or copy the URL provided (e.g. `https://connect.raspberrypi.com/verify/XXXX-XXXX`) into your laptop or phone browser.
+3. Sign into your free Raspberry Pi ID and click **Link device**.
+4. You can now access your Pi terminal anytime from [https://connect.raspberrypi.com](https://connect.raspberrypi.com)!
+
+### Manual Setup via Shell
+
+```bash
+sudo apt update
+sudo apt install -y rpi-connect-lite
+sudo loginctl enable-linger pi
+systemctl --user enable --now rpi-connect
+rpi-connect signin
+```
+
+---
+
 ## 🛠️ Troubleshooting & FAQ
 
 | Problem | Root Cause | Solution |
@@ -311,12 +342,14 @@ sudo nmcli connection modify "SMJV" connection.autoconnect yes connection.autoco
 ├── tools/
 │   ├── run_pi.py                # All-in-one autonomous & interactive assistant runner
 │   ├── setup_wifi.py            # Wi-Fi auto-connect & mDNS headless SSH setup
+│   ├── setup_remote_connect.py  # Raspberry Pi Connect remote browser access setup
 │   ├── deploy_to_pi.py          # Universal laptop-to-Pi deploy tool (Windows/macOS/Linux)
 │   ├── connect_speaker.py       # Standalone Bluetooth pairing & audio diagnostic wizard
 │   └── laptop_camera_server.py  # Zero-dependency MJPEG camera streamer for any laptop
 ├── scripts/
 │   ├── run_pi.sh                # Shell runner for autonomous/interactive mode
 │   ├── setup_wifi.sh            # Shell shortcut for setup_wifi.py
+│   ├── setup_remote_connect.sh  # Shell shortcut for setup_remote_connect.py
 │   ├── deploy_to_pi.sh          # Bash deploy script (macOS/Linux/Git Bash)
 │   ├── deploy_to_pi.ps1         # Native Windows PowerShell deploy script
 │   └── connect_speaker.sh       # Shell shortcut for connect_speaker.py

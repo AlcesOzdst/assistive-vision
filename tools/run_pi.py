@@ -262,9 +262,10 @@ def run_interactive(cfg: dict) -> None:
         print("  [4] ⚙️ Change Laptop IP or Detection Interval")
         print("  [5] 🔊 Test Speaker Speech Output")
         print("  [6] 📶 Configure Wi-Fi Auto-Connect (e.g. SMJV)")
+        print("  [7] 🌐 Setup Raspberry Pi Connect (Remote Access from Anywhere)")
         print("  [q] Quit")
 
-        choice = input("\nEnter choice [1-6, q]: ").strip().lower()
+        choice = input("\nEnter choice [1-7, q]: ").strip().lower()
 
         if choice == "q":
             print("Exiting.")
@@ -319,6 +320,9 @@ def run_interactive(cfg: dict) -> None:
             test_speech("Test audio: one two three, assistive vision is ready.")
         elif choice == "6":
             script_path = Path(__file__).parent / "setup_wifi.py"
+            subprocess.run([sys.executable, str(script_path)])
+        elif choice == "7":
+            script_path = Path(__file__).parent / "setup_remote_connect.py"
             subprocess.run([sys.executable, str(script_path)])
         else:
             print("Invalid option.")
