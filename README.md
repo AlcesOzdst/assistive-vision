@@ -4,6 +4,9 @@ An assistive computer vision system designed to announce detected objects and th
 
 The system is built on a **modular, hardware-independent architecture**, allowing development, simulation, and real-world deployment across laptops and embedded systems (Raspberry Pi).
 
+> 💡 **Looking for the easy, step-by-step setup guide?**  
+> Check out the [**Plain-English Quickstart Guide (QUICKSTART.md)**](QUICKSTART.md) — it walks you through running the Laptop Camera + Raspberry Pi + Bluetooth Speaker in 3 foolproof steps.
+
 ---
 
 ## Architecture Overview
@@ -22,6 +25,7 @@ The system is built on a **modular, hardware-independent architecture**, allowin
 ```
 
 The system uses standard Python `Protocol` interfaces:
+
 - **`Camera`**: Captures frames from webcams, network streams, or mock generators.
 - **`Detector`**: Runs inference. Supports OpenCV DNN (`yolov8n.onnx` without PyTorch/CUDA) or Ultralytics (`yolov8n.pt`).
 - **`Speaker`**: Text-to-speech output via `pyttsx3` / `espeak-ng` or terminal stdout.
@@ -38,6 +42,7 @@ python -m assistive_vision --demo --scans 3
 ```
 
 **Expected output:**
+
 ```text
 Detected: bottle (center, 0.94)
 Detected: chair (left, 0.88), table (center, 0.91)
@@ -45,6 +50,7 @@ Detected: cell phone (right, 0.86)
 ```
 
 Run automated tests:
+
 ```bash
 python -m unittest discover -s tests -v
 ```
@@ -58,16 +64,21 @@ In this setup, your laptop acts purely as a wireless camera, while the Raspberry
 ### 1. On your Laptop (Camera Streamer)
 
 1. Install OpenCV on your laptop:
+
    ```bash
    pip install opencv-python
    ```
+
 2. Find your laptop's local IPv4 address:
    - **Windows:** Run `ipconfig` (look for `IPv4 Address` under your active Wi-Fi adapter, e.g., `172.17.4.137` or `192.168.1.50`).
    - **Linux / macOS:** Run `ip a` or `ifconfig`.
+
 3. Start the lightweight camera streaming server:
+
    ```bash
    python tools/laptop_camera_server.py --camera 0 --port 8765
    ```
+
    *(If prompted by Windows Firewall, allow access on Private Networks).*
 
 ---
@@ -75,13 +86,16 @@ In this setup, your laptop acts purely as a wireless camera, while the Raspberry
 ### 2. On your Raspberry Pi (Detection & Audio)
 
 #### A. Install System Dependencies
+
 Install OpenCV, NumPy, text-to-speech, and PipeWire Bluetooth audio plugins:
+
 ```bash
 sudo apt update
 sudo apt install -y python3-opencv python3-numpy espeak-ng python3-venv libspa-0.2-bluetooth pipewire-alsa
 ```
 
 #### B. Set Up the Project & Virtual Environment
+
 ```bash
 cd ~/assistive-vision
 python3 -m venv --system-site-packages .venv
@@ -98,21 +112,28 @@ Ensure `yolov8n.onnx` is placed in this directory.
 1. Turn off Bluetooth on your phone and laptop temporarily so the speaker doesn't auto-connect to them.
 2. Put your Bluetooth speaker into **pairing mode** (long-press the Bluetooth button until it chimes/flashes).
 3. Open `bluetoothctl` on the Pi:
+
    ```bash
    bluetoothctl
    ```
+
 4. In the `[bluetooth]#` prompt:
+
    ```text
    scan on
    ```
+
    Wait for your speaker to appear with its MAC address (e.g., `BA:A6:58:A5:50:39 ZEB-DELIGHT`):
+
    ```text
    pair BA:A6:58:A5:50:39
    trust BA:A6:58:A5:50:39
    connect BA:A6:58:A5:50:39
    exit
    ```
+
 5. Test sound output:
+
    ```bash
    espeak-ng "audio connected"
    ```
@@ -193,6 +214,7 @@ python -c "from ultralytics import YOLO; YOLO('yolov8n.pt').export(format='onnx'
 ├── pyproject.toml        # Package dependencies and CLI entry point
 ├── yolov8n.onnx          # Pre-converted YOLOv8 nano ONNX model for Raspberry Pi
 ├── yolov8n.pt            # YOLOv8 nano PyTorch model
+├── QUICKSTART.md         # Plain-English step-by-step guide
 └── README.md
 ```
 
