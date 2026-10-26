@@ -4,24 +4,29 @@ set -Eeuo pipefail
 usage() {
     cat <<'EOF'
 Usage:
-  ./scripts/deploy_to_pi.sh PI_USER PI_HOST MODEL_PATH
+  ./scripts/deploy_to_pi.sh [PI_USER] [PI_HOST] [MODEL_PATH]
 
 Example:
-  ./scripts/deploy_to_pi.sh pi 192.168.1.80 ./yolov8n.pt
+  ./scripts/deploy_to_pi.sh pi 172.17.4.80 ./yolov8n.onnx
 
-Run this from the project root on the laptop. The laptop camera server is
-intentionally not copied to the Pi; it remains on the laptop.
+Run this from the project root on the laptop (macOS / Linux / Git Bash).
+For Windows PowerShell, run: .\scripts\deploy_to_pi.ps1
+For any OS via Python:       python tools/deploy_to_pi.py
 EOF
 }
 
-if [[ $# -ne 3 ]]; then
-    usage >&2
-    exit 2
+PI_USER="${1:-pi}"
+PI_HOST="${2:-}"
+MODEL_PATH="${3:-./yolov8n.onnx}"
+
+if [[ -z "${PI_HOST}" ]]; then
+    read -rp "Enter Raspberry Pi IP address: " PI_HOST
+    if [[ -z "${PI_HOST}" ]]; then
+        usage >&2
+        exit 1
+    fi
 fi
 
-PI_USER="$1"
-PI_HOST="$2"
-MODEL_PATH="$3"
 REMOTE_DIR="/home/${PI_USER}/assistive-vision"
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
@@ -49,73 +54,73 @@ else
     PI_EXTRA="camera"
 fi
 
-echo "Creating ${REMOTE_DIR} on ${PI_HOST}..."
-if ! ssh "${PI_USER}@${PI_HOST}" "true"; then
-    echo "Error: cannot reach ${PI_USER}@${PI_HOST} over SSH." >&2
-    echo "Confirm that the Pi is powered on and use its current IP address." >&2
-    exit 1
-fi
+echo "================================================================="
+echo "  🚀 ASSISTIVE VISION — PI DEPLOYMENT"
+echo "================================================================="
+echo "Target: ${PI_USER}@${PI_HOST}:${REMOTE_DIR}"
+echo "Model:  ${MODEL_PATH}"
+echo
 
-if ! ssh "${PI_USER}@${PI_HOST}" "sudo -n true" 2>/dev/null; then
-    echo "Error: passwordless sudo is not currently authorized on the Pi." >&2
-    echo "SSH into the Pi and run 'sudo -v' once, then rerun this script." >&2
+echo "Testing connection to ${PI_HOST} over SSH..."
+if ! ssh "${PI_USER}@${PI_HOST}" "true" 2>/dev/null; then
+    echo "Error: cannot reach ${PI_USER}@${PI_HOST} over SSH." >&2
+    echo "Confirm that the Pi is powered on and check its IP address." >&2
     exit 1
 fi
 
 ssh "${PI_USER}@${PI_HOST}" "mkdir -p '${REMOTE_DIR}'"
 
-echo "Copying Pi-side application files..."
+echo "Copying application files and model to Pi..."
 scp -r \
     "${PROJECT_DIR}/src" \
+    "${PROJECT_DIR}/tools" \
+    "${PROJECT_DIR}/scripts" \
     "${PROJECT_DIR}/pyproject.toml" \
+    "${PROJECT_DIR}/README.md" \
+    "${PROJECT_DIR}/QUICKSTART.md" \
     "${MODEL_PATH}" \
     "${PI_USER}@${PI_HOST}:${REMOTE_DIR}/"
 
-echo "Installing Raspberry Pi dependencies..."
+echo "Configuring Raspberry Pi environment..."
 ssh "${PI_USER}@${PI_HOST}" "PI_EXTRA='${PI_EXTRA}' bash -s" <<'REMOTE_SETUP'
 set -Eeuo pipefail
 cd "$HOME/assistive-vision"
 
-if ! command -v python3 >/dev/null 2>&1; then
-    echo "python3 is required. Install it with: sudo apt update && sudo apt install -y python3"
-    exit 1
-fi
+chmod +x scripts/*.sh tools/*.py 2>/dev/null || true
 
-if ! python3 -m venv --help >/dev/null 2>&1; then
-    echo "Installing Python virtual-environment support..."
-    sudo -n apt update
-    sudo -n apt install -y python3-venv python3-pip
-fi
-
-if [[ "${PI_EXTRA}" == "pi" ]]; then
-    sudo -n apt update
-    sudo -n apt install -y python3-opencv python3-numpy espeak-ng libspa-0.2-bluetooth pipewire-alsa
+# Try installing system packages if apt is available and sudo is permitted
+if sudo -n true 2>/dev/null; then
+    sudo -n apt update -qq 2>/dev/null || true
+    sudo -n apt install -y -qq python3-opencv python3-numpy espeak-ng libspa-0.2-bluetooth pipewire-alsa 2>/dev/null || true
     systemctl --user restart pipewire wireplumber 2>/dev/null || true
 fi
 
 if [[ ! -d .venv ]]; then
     if [[ "${PI_EXTRA}" == "pi" ]]; then
-        python3 -m venv --system-site-packages .venv
+        python3 -m venv --system-site-packages .venv 2>/dev/null || python3 -m venv .venv
     else
         python3 -m venv .venv
     fi
 fi
 
 source .venv/bin/activate
-python -m pip install -e ".[${PI_EXTRA}]"
-python -m assistive_vision --demo --scans 3
+pip install -e ".[${PI_EXTRA}]" -q 2>/dev/null || pip install -e ".[${PI_EXTRA}]"
 REMOTE_SETUP
 
 echo
-echo "Deployment complete."
-echo
-echo "1. On the laptop, start the camera stream:"
+echo "================================================================="
+echo "  🎉 DEPLOYMENT COMPLETE!"
+echo "================================================================="
+echo "1. On this laptop, start the camera stream:"
 echo "   python tools/laptop_camera_server.py --camera 0 --port 8765"
 echo
-echo "2. Find the laptop IPv4 address with 'ipconfig'."
-echo
-echo "3. On the Pi, run:"
+echo "2. SSH into the Pi:"
 echo "   ssh ${PI_USER}@${PI_HOST}"
+echo
+echo "3. Run the autonomous assistant on the Pi:"
 echo "   cd ${REMOTE_DIR}"
 echo "   source .venv/bin/activate"
-echo "   python -m assistive_vision --stream-url http://LAPTOP_IP:8765/video --model ./${MODEL_NAME} --speak --interval 5"
+echo "   python tools/run_pi.py --auto"
+echo
+echo "   (Or interactive menu: python tools/run_pi.py)"
+echo "================================================================="

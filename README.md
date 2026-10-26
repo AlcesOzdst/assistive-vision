@@ -83,22 +83,44 @@ python tools/laptop_camera_server.py --camera 0 --port 8765
 
 ---
 
-### Step 2: Raspberry Pi Setup
+### Step 2: Deploy to Raspberry Pi
 
-SSH into your Raspberry Pi or open a terminal on the Pi desktop.
+You can either push the project directly from your laptop (recommended) or clone it directly on the Pi.
 
-#### 2.1 Get the project on your Pi
+#### Option A: 1-Command Push from Laptop (Works on ANY Laptop: Windows, macOS, Linux)
+
+From your laptop terminal in the project directory, run:
+
+- **Any OS (Universal Python):**
+
+  ```bash
+  python tools/deploy_to_pi.py pi <PI_IP> ./yolov8n.onnx
+  ```
+
+- **Windows (PowerShell):**
+
+  ```powershell
+  .\scripts\deploy_to_pi.ps1 -PiHost <PI_IP>
+  ```
+
+- **macOS / Linux (Bash):**
+
+  ```bash
+  ./scripts/deploy_to_pi.sh pi <PI_IP> ./yolov8n.onnx
+  ```
+
+This automatically copies `src/`, `tools/`, `scripts/`, and `yolov8n.onnx` to your Raspberry Pi, configures the `.venv`, and sets up all audio and computer-vision dependencies.
+
+---
+
+#### Option B: Clone Directly on Raspberry Pi
+
+SSH into your Raspberry Pi (`ssh pi@<PI_IP>`) or open a terminal on the Pi desktop:
 
 ```bash
 git clone https://github.com/AlcesOzdst/assistive-vision.git ~/assistive-vision
 cd ~/assistive-vision
-```
 
-*(If already cloned, simply run `git pull origin main`).*
-
-#### 2.2 Install system packages & virtual environment
-
-```bash
 sudo apt update
 sudo apt install -y python3-opencv python3-numpy espeak-ng python3-venv libspa-0.2-bluetooth pipewire-alsa
 
@@ -198,9 +220,9 @@ python -m assistive_vision --stream-url http://<LAPTOP_IP>:8765/video --model yo
 
 | Flag | Default | Description |
 | :--- | :--- | :--- |
-| `--confidence` | `0.25` | Detection threshold (0.0 to 1.0). Lower values (e.g. `0.20`) detect smaller objects easier; higher values (e.g. `0.40`) reduce false positives. |
-| `--interval` | `3.0` | Minimum seconds between announcements when the scene changes. |
-| `--repeat-interval` | `15.0` | Seconds before re-announcing if the scene stays completely unchanged. |
+| `--confidence` | `0.20` | Detection threshold (0.0 to 1.0). Lower values (e.g. `0.20`) detect smaller objects easier; higher values (e.g. `0.40`) reduce false positives. |
+| `--interval` | `6.0` | Minimum seconds between announcements when the scene changes. |
+| `--repeat-interval` | `45.0` | Seconds before re-announcing if the scene stays completely unchanged. |
 | `--speech-rate` | `145` | Words per minute for speech output. Lower values sound clearer and calmer; higher values speak faster. |
 | *(omit `--speak`)* | — | Runs detection and prints results in the terminal without voice output. |
 
@@ -221,8 +243,8 @@ python -m assistive_vision --laptop-camera --model yolov8n.pt --speak
 
 | Problem | Root Cause | Solution |
 | :--- | :--- | :--- |
-| `br-connection-profile-unavailable` | PipeWire Bluetooth audio bridge was not initialized. | Run `python tools/connect_speaker.py` — it automatically resets and registers the PipeWire endpoints for you. |
-| `connect failed (status 0x04)` | Bluetooth Page Timeout. The speaker auto-connected to your phone or laptop. | Turn off Bluetooth on your phone and laptop, power-cycle the speaker into pairing mode, and run `python tools/connect_speaker.py`. |
+| `br-connection-profile-unavailable` | PipeWire Bluetooth audio bridge was not initialized. | Run `python tools/run_pi.py --auto` or `python tools/connect_speaker.py` — it automatically resets and registers the PipeWire endpoints for you. |
+| `connect failed (status 0x04)` | Bluetooth Page Timeout. The speaker auto-connected to your phone or laptop. | Turn off Bluetooth on your phone and laptop, power-cycle the speaker into pairing mode, and run `python tools/run_pi.py`. |
 | Pi cannot reach `http://<LAPTOP_IP>:8765/video` | Windows Firewall or wrong IP chosen in `ipconfig`. | Allow Python through Windows Firewall on Private Networks, and ensure you copied the IP under `Wireless LAN adapter WiFi`, not WSL or VMware. |
 | Audio dies after closing SSH | User systemd services suspended on SSH exit. | Run `sudo loginctl enable-linger pi` on the Pi so audio services run continuously in the background. |
 | It only announces "person" and "cell phone" | Camera is pointing directly at you holding your phone. | Point the webcam around the room at different objects (chair, bottle, cup, backpack, book, laptop). |
@@ -241,11 +263,15 @@ python -m assistive_vision --laptop-camera --model yolov8n.pt --speak
 │   ├── pipeline.py              # Throttled detection & natural speech coordinator
 │   └── adapters.py              # OpenCV, ONNX DNN, Ultralytics, and pyttsx3 adapters
 ├── tools/
-│   ├── connect_speaker.py       # Interactive Bluetooth pairing & audio wizard
-│   └── laptop_camera_server.py  # Lightweight MJPEG camera streamer for any laptop
+│   ├── run_pi.py                # All-in-one autonomous & interactive assistant runner
+│   ├── deploy_to_pi.py          # Universal laptop-to-Pi deploy tool (Windows/macOS/Linux)
+│   ├── connect_speaker.py       # Standalone Bluetooth pairing & audio diagnostic wizard
+│   └── laptop_camera_server.py  # Zero-dependency MJPEG camera streamer for any laptop
 ├── scripts/
-│   ├── connect_speaker.sh       # Shell shortcut for connect_speaker.py
-│   └── deploy_to_pi.sh          # Automated SSH/SCP deployment script
+│   ├── run_pi.sh                # Shell runner for autonomous/interactive mode
+│   ├── deploy_to_pi.sh          # Bash deploy script (macOS/Linux/Git Bash)
+│   ├── deploy_to_pi.ps1         # Native Windows PowerShell deploy script
+│   └── connect_speaker.sh       # Shell shortcut for connect_speaker.py
 ├── tests/
 │   └── test_pipeline.py         # Unit tests
 ├── pyproject.toml               # Package configuration
