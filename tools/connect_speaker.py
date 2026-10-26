@@ -56,15 +56,17 @@ def check_and_install_dependencies() -> None:
 
 
 def fix_audio_stack() -> None:
-    """Restart bluetooth and PipeWire/WirePlumber to register A2DP profiles."""
-    print("🔄 [2/4] Initializing Bluetooth and PipeWire audio services...")
+    """Resolve PulseAudio/PipeWire collisions and register A2DP audio endpoints."""
+    print("🔄 [2/4] Resolving audio conflicts and initializing Bluetooth...")
     
     # Enable linger so user audio services stay active across SSH logouts
     user = os.environ.get("USER", "pi")
     run_cmd(f"sudo loginctl enable-linger {user}", shell=True)
-    
-    # Unblock rfkill
     run_cmd("sudo rfkill unblock all", shell=True)
+    
+    # CRITICAL: Stop and disable pulseaudio so it doesn't fight PipeWire for Bluetooth audio endpoints
+    run_cmd("systemctl --user stop pulseaudio pulseaudio.socket 2>/dev/null", shell=True)
+    run_cmd("systemctl --user disable pulseaudio 2>/dev/null", shell=True)
     
     # Restart Bluetooth daemon
     run_cmd("sudo systemctl restart bluetooth", shell=True)
@@ -72,7 +74,7 @@ def fix_audio_stack() -> None:
     
     # Restart PipeWire user audio stack
     run_cmd("systemctl --user restart pipewire pipewire-pulse wireplumber 2>/dev/null", shell=True)
-    time.sleep(1.5)
+    time.sleep(2)
     print("   ✅ Audio endpoints registered with Bluetooth.")
 
 
@@ -107,7 +109,6 @@ def scan_bluetooth_devices(duration: int = 8) -> list[tuple[str, str]]:
             stderr=subprocess.PIPE,
             text=True,
         )
-        # Turn power on and start scanning
         proc.stdin.write("power on\nscan on\n")
         proc.stdin.flush()
 
@@ -117,7 +118,6 @@ def scan_bluetooth_devices(duration: int = 8) -> list[tuple[str, str]]:
             time.sleep(1)
         sys.stdout.write("\r   Scan complete!                   \n")
 
-        # Request devices list and exit
         proc.stdin.write("devices\nexit\n")
         proc.stdin.flush()
         out, _ = proc.communicate(timeout=5)
@@ -133,15 +133,13 @@ def scan_bluetooth_devices(duration: int = 8) -> list[tuple[str, str]]:
         if match:
             mac = match.group(1).upper()
             name = match.group(2).strip()
-            # If not a generic MAC-like name or already have a better name
             if mac not in devices or not devices[mac].replace("-", ":").upper() == mac:
                 devices[mac] = name
 
-    # Sort so named devices appear first
     sorted_devices = sorted(
         devices.items(),
         key=lambda item: (
-            item[1].replace("-", ":").upper() == item[0],  # False (named) comes first
+            item[1].replace("-", ":").upper() == item[0],
             item[1].lower(),
         ),
     )
@@ -149,47 +147,69 @@ def scan_bluetooth_devices(duration: int = 8) -> list[tuple[str, str]]:
 
 
 def pair_and_connect(mac: str, name: str) -> bool:
-    """Pair, trust, and connect to a device via bluetoothctl."""
+    """Pair, trust, and connect to a device with automatic error recovery."""
     print(f"\n🔗 Connecting to {name} ({mac})...")
 
-    commands = [
-        f"pair {mac}",
-        f"trust {mac}",
-        f"connect {mac}",
-        "exit",
-    ]
+    # Step 1: Check existing connection status
+    info = run_cmd(f"bluetoothctl info {mac}", shell=True).stdout
+    if "Connected: yes" in info:
+        print(f"   🎉 {name} is already connected!")
+        save_speaker(mac, name)
+        return True
 
-    try:
-        proc = subprocess.Popen(
-            ["bluetoothctl"],
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-        )
-        out, err = proc.communicate(input="\n".join(commands) + "\n", timeout=25)
-    except Exception as exc:
-        print(f"❌ Subprocess error: {exc}")
-        return False
+    # Step 2: Pair if not yet paired
+    if "Paired: yes" not in info:
+        print("   ⏳ Pairing...")
+        p_res = run_cmd(f"bluetoothctl pair {mac}", shell=True).stdout
+        time.sleep(1.5)
+        if "Failed" in p_res and "AlreadyExists" not in p_res:
+            print(f"   Note: {p_res.strip()}")
 
-    if "Connection successful" in out or "Connected: yes" in out:
+    # Step 3: Trust
+    print("   ⏳ Trusting...")
+    run_cmd(f"bluetoothctl trust {mac}", shell=True)
+    time.sleep(0.5)
+
+    # Step 4: Connect
+    print("   ⏳ Connecting audio profile...")
+    conn = run_cmd(f"bluetoothctl connect {mac}", shell=True).stdout
+
+    if "Connection successful" in conn or "Connected: yes" in conn:
         print(f"   🎉 Successfully connected to {name}!")
         save_speaker(mac, name)
         return True
 
-    if "br-connection-profile-unavailable" in out:
-        print("   ⚠️ Audio profile endpoint was missing. Applying auto-recovery...")
+    # Recovery: if profile unavailable, restart PipeWire & Bluetooth and retry
+    if "br-connection-profile-unavailable" in conn:
+        print("   ⚠️ Audio profile endpoint missing. Auto-recovering PipeWire & Bluetooth...")
         fix_audio_stack()
         time.sleep(2)
-        # Retry connect once
-        retry = run_cmd(f"bluetoothctl connect {mac}", shell=True)
-        if "Connection successful" in retry.stdout:
-            print(f"   🎉 Recovered & successfully connected to {name}!")
+        retry_conn = run_cmd(f"bluetoothctl connect {mac}", shell=True).stdout
+        if "Connection successful" in retry_conn or "Connected: yes" in retry_conn:
+            print(f"   🎉 Recovered & connected to {name}!")
             save_speaker(mac, name)
             return True
 
-    print(f"❌ Failed to connect to {name}.")
-    print(f"Details:\n{out}")
+    if "status 0x04" in conn:
+        print("\n❌ Page Timeout (status 0x04): Speaker did not respond.")
+        print("   👉 Cause: The speaker is connected to your phone or laptop, or timed out.")
+        print("   👉 Fix: Turn OFF Bluetooth on your phone and laptop, power-cycle the speaker, and retry.")
+        return False
+
+    # Final deep recovery: remove stale pairing and re-pair freshly
+    print("   Attempting fresh pairing reset...")
+    run_cmd(f"bluetoothctl remove {mac}", shell=True)
+    time.sleep(1)
+    run_cmd(f"bluetoothctl pair {mac}", shell=True)
+    time.sleep(1)
+    run_cmd(f"bluetoothctl trust {mac}", shell=True)
+    final_conn = run_cmd(f"bluetoothctl connect {mac}", shell=True).stdout
+    if "Connection successful" in final_conn or "Connected: yes" in final_conn:
+        print(f"   🎉 Connected on fresh retry!")
+        save_speaker(mac, name)
+        return True
+
+    print(f"❌ Could not connect: {conn.strip()}")
     return False
 
 

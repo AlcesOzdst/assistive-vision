@@ -4,6 +4,7 @@ from .adapters import (
     ConsoleSpeaker,
     DemoCamera,
     DemoDetector,
+    NetworkSpeaker,
     OpenCVCamera,
     OpenCVYoloDetector,
     Pyttsx3Speaker,
@@ -50,7 +51,12 @@ def main() -> int:
     parser.add_argument(
         "--speak",
         action="store_true",
-        help="use local text-to-speech instead of printing announcements",
+        help="use local text-to-speech on the Pi/device instead of printing announcements",
+    )
+    parser.add_argument(
+        "--laptop-speaker",
+        action="store_true",
+        help="route speech announcements back to the laptop speaker over Wi-Fi",
     )
     args = parser.parse_args()
 
@@ -72,7 +78,15 @@ def main() -> int:
         else:
             detector = UltralyticsDetector(args.model, confidence_threshold=args.confidence)
 
-    speaker = Pyttsx3Speaker(rate=args.speech_rate) if args.speak else ConsoleSpeaker()
+    if args.laptop_speaker:
+        if not args.stream_url:
+            parser.error("--laptop-speaker requires --stream-url (e.g. http://LAPTOP_IP:8765/video)")
+        speak_url = args.stream_url.rsplit("/", 1)[0] + "/speak"
+        speaker = NetworkSpeaker(speak_url)
+    elif args.speak:
+        speaker = Pyttsx3Speaker(rate=args.speech_rate)
+    else:
+        speaker = ConsoleSpeaker()
     VisionPipeline(
         camera,
         detector,

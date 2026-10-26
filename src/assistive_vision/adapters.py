@@ -56,6 +56,29 @@ class Pyttsx3Speaker:
         self._engine.runAndWait()
 
 
+class NetworkSpeaker:
+    """Delivers speech announcements over HTTP to a remote speaker (e.g., laptop speaker)."""
+
+    def __init__(self, endpoint_url: str) -> None:
+        self.endpoint_url = endpoint_url
+
+    def speak(self, message: str) -> None:
+        import json
+        import urllib.request
+        data = json.dumps({"message": message}).encode("utf-8")
+        req = urllib.request.Request(
+            self.endpoint_url,
+            data=data,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=3) as resp:
+                pass
+        except Exception:
+            pass
+
+
 class OpenCVCamera:
     """OpenCV camera adapter for a local device or a network video stream."""
 

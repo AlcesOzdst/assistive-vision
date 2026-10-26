@@ -27,6 +27,27 @@ class CameraState:
             return encoded.tobytes() if ok else None
 
 
+def play_laptop_speech(message: str) -> None:
+    """Announce text on the laptop using pyttsx3 or Windows SAPI."""
+    try:
+        import pyttsx3
+        engine = pyttsx3.init()
+        engine.setProperty("rate", 145)
+        engine.say(message)
+        engine.runAndWait()
+        return
+    except Exception:
+        pass
+    try:
+        import win32com.client
+        sp = win32com.client.Dispatch("SAPI.SpVoice")
+        sp.Speak(message)
+        return
+    except Exception:
+        pass
+    print(f"🔊 [Announcement]: {message}")
+
+
 def make_handler(state: CameraState):
     class StreamHandler(server.BaseHTTPRequestHandler):
         def do_GET(self) -> None:
@@ -52,6 +73,24 @@ def make_handler(state: CameraState):
                     )
             except (BrokenPipeError, ConnectionResetError):
                 pass
+
+        def do_POST(self) -> None:
+            if self.path == "/speak":
+                length = int(self.headers.get("Content-Length", 0))
+                raw_body = self.rfile.read(length).decode("utf-8")
+                try:
+                    import json
+                    text = json.loads(raw_body).get("message", "")
+                except Exception:
+                    text = raw_body
+                if text:
+                    print(f"🔊 Laptop Announcing: \"{text}\"")
+                    threading.Thread(target=play_laptop_speech, args=(text,), daemon=True).start()
+                self.send_response(200)
+                self.end_headers()
+                self.wfile.write(b"OK")
+                return
+            self.send_error(404, "Unknown endpoint")
 
         def log_message(self, format: str, *args: object) -> None:
             return
