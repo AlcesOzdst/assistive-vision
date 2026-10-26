@@ -239,6 +239,51 @@ python -m assistive_vision --laptop-camera --model yolov8n.pt --speak
 
 ---
 
+## 📶 Automatic Wi-Fi Auto-Connect (Headless SSH without Switches)
+
+To make your Raspberry Pi connect automatically to your Wi-Fi (such as `SMJV` or your phone hotspot) on every boot so you can SSH in without monitors, keyboards, or bulky Ethernet switches:
+
+### 1-Command Automatic Setup
+
+On the Pi (or from your existing SSH session), run:
+
+```bash
+sudo python tools/setup_wifi.py --ssid "SMJV" --password "your_wifi_password"
+```
+
+*(If the network has no password, omit `--password`).*
+
+You can also run the interactive wizard:
+
+```bash
+sudo python tools/setup_wifi.py
+```
+
+*(Or select option `[6]` from `python tools/run_pi.py`).*
+
+### Zero-Config Headless SSH (No IP lookup needed!)
+
+Once configured, whenever your Pi boots up, it automatically connects to `SMJV` with highest priority (`priority=100`).
+
+From your laptop (connected to `SMJV`), you don't even need to know the IP address. Just type:
+
+```bash
+ssh pi@raspi.local
+```
+
+*(On standard Raspberry Pi OS, `raspi.local` or `raspberrypi.local` is broadcasted via mDNS `avahi-daemon`, which is pre-enabled by our setup tool).*
+
+### Alternative: Direct Linux NetworkManager command
+
+If you prefer using `nmcli` directly:
+
+```bash
+sudo nmcli dev wifi connect "SMJV" password "your_password"
+sudo nmcli connection modify "SMJV" connection.autoconnect yes connection.autoconnect-priority 100
+```
+
+---
+
 ## 🛠️ Troubleshooting & FAQ
 
 | Problem | Root Cause | Solution |
@@ -248,6 +293,7 @@ python -m assistive_vision --laptop-camera --model yolov8n.pt --speak
 | Pi cannot reach `http://<LAPTOP_IP>:8765/video` | Windows Firewall or wrong IP chosen in `ipconfig`. | Allow Python through Windows Firewall on Private Networks, and ensure you copied the IP under `Wireless LAN adapter WiFi`, not WSL or VMware. |
 | Audio dies after closing SSH | User systemd services suspended on SSH exit. | Run `sudo loginctl enable-linger pi` on the Pi so audio services run continuously in the background. |
 | It only announces "person" and "cell phone" | Camera is pointing directly at you holding your phone. | Point the webcam around the room at different objects (chair, bottle, cup, backpack, book, laptop). |
+| Cannot SSH after boot | Wi-Fi not connected or mDNS not responding. | Run `sudo python tools/setup_wifi.py` to save the network with high autoconnect priority, or add a secondary phone hotspot as backup. |
 
 ---
 
@@ -264,11 +310,13 @@ python -m assistive_vision --laptop-camera --model yolov8n.pt --speak
 │   └── adapters.py              # OpenCV, ONNX DNN, Ultralytics, and pyttsx3 adapters
 ├── tools/
 │   ├── run_pi.py                # All-in-one autonomous & interactive assistant runner
+│   ├── setup_wifi.py            # Wi-Fi auto-connect & mDNS headless SSH setup
 │   ├── deploy_to_pi.py          # Universal laptop-to-Pi deploy tool (Windows/macOS/Linux)
 │   ├── connect_speaker.py       # Standalone Bluetooth pairing & audio diagnostic wizard
 │   └── laptop_camera_server.py  # Zero-dependency MJPEG camera streamer for any laptop
 ├── scripts/
 │   ├── run_pi.sh                # Shell runner for autonomous/interactive mode
+│   ├── setup_wifi.sh            # Shell shortcut for setup_wifi.py
 │   ├── deploy_to_pi.sh          # Bash deploy script (macOS/Linux/Git Bash)
 │   ├── deploy_to_pi.ps1         # Native Windows PowerShell deploy script
 │   └── connect_speaker.sh       # Shell shortcut for connect_speaker.py

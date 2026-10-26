@@ -261,9 +261,10 @@ def run_interactive(cfg: dict) -> None:
         print("  [3] 🔄 Full Reset & Reconnect Speaker (Fix profile errors)")
         print("  [4] ⚙️ Change Laptop IP or Detection Interval")
         print("  [5] 🔊 Test Speaker Speech Output")
+        print("  [6] 📶 Configure Wi-Fi Auto-Connect (e.g. SMJV)")
         print("  [q] Quit")
 
-        choice = input("\nEnter choice [1-5, q]: ").strip().lower()
+        choice = input("\nEnter choice [1-6, q]: ").strip().lower()
 
         if choice == "q":
             print("Exiting.")
@@ -316,6 +317,9 @@ def run_interactive(cfg: dict) -> None:
             print("✅ Settings saved!")
         elif choice == "5":
             test_speech("Test audio: one two three, assistive vision is ready.")
+        elif choice == "6":
+            script_path = Path(__file__).parent / "setup_wifi.py"
+            subprocess.run([sys.executable, str(script_path)])
         else:
             print("Invalid option.")
 
