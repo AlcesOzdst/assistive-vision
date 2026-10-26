@@ -40,12 +40,16 @@ class ConsoleSpeaker:
 class Pyttsx3Speaker:
     """Optional local text-to-speech adapter for a laptop or Raspberry Pi."""
 
-    def __init__(self) -> None:
+    def __init__(self, rate: int = 145) -> None:
         try:
             import pyttsx3
         except ImportError as exc:
             raise RuntimeError("speech output requires pyttsx3") from exc
         self._engine = pyttsx3.init()
+        try:
+            self._engine.setProperty("rate", rate)
+        except Exception:
+            pass
 
     def speak(self, message: str) -> None:
         self._engine.say(message)
@@ -88,15 +92,16 @@ class OpenCVCamera:
 class UltralyticsDetector:
     """Optional YOLO adapter for a local Ultralytics model."""
 
-    def __init__(self, model_path: str) -> None:
+    def __init__(self, model_path: str, *, confidence_threshold: float = 0.25) -> None:
         try:
             from ultralytics import YOLO
         except ImportError as exc:
             raise RuntimeError("YOLO mode requires the optional camera dependencies") from exc
         self._model = YOLO(model_path)
+        self._confidence_threshold = confidence_threshold
 
     def detect(self, frame: Frame) -> Iterable[Detection]:
-        results = self._model(frame.payload, verbose=False)
+        results = self._model(frame.payload, conf=self._confidence_threshold, verbose=False)
         detections: list[Detection] = []
         for result in results:
             names: dict[int, str] = result.names
@@ -135,7 +140,7 @@ class OpenCVYoloDetector:
         self,
         model_path: str,
         *,
-        confidence_threshold: float = 0.35,
+        confidence_threshold: float = 0.25,
         nms_threshold: float = 0.45,
         input_size: int = 640,
     ) -> None:

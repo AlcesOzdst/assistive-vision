@@ -74,6 +74,48 @@ class PipelineTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             Detection("person", 1.1)
 
+    def test_natural_speech_formatting_no_decimals_or_parentheses(self) -> None:
+        detections = [
+            Detection("person", 0.84, "center"),
+            Detection("cell phone", 0.91, "center"),
+            Detection("chair", 0.88, "left"),
+        ]
+        text = VisionPipeline._format_announcement(detections)
+        self.assertNotIn("0.84", text)
+        self.assertNotIn("0.91", text)
+        self.assertNotIn("(", text)
+        self.assertNotIn(")", text)
+        self.assertIn("In front: a person and a cell phone", text)
+        self.assertIn("On your left: a chair", text)
+
+    def test_unchanged_scene_suppressed_until_repeat_interval(self) -> None:
+        speaker = RecordingSpeaker()
+        clock = Clock()
+        
+        class StaticDetector:
+            def detect(self, frame):
+                return [Detection("cup", 0.9, "center")]
+
+        pipeline = VisionPipeline(
+            DemoCamera(5),
+            StaticDetector(),
+            speaker,
+            announcement_interval=3.0,
+            repeat_unchanged_interval=15.0,
+            clock=clock,
+        )
+
+        pipeline.scan_once()  # t=0 -> announces
+        self.assertEqual(len(speaker.messages), 1)
+
+        clock.value = 4.0
+        pipeline.scan_once()  # t=4 -> elapsed 4 >= 3, but unchanged, so suppressed!
+        self.assertEqual(len(speaker.messages), 1)
+
+        clock.value = 15.0
+        pipeline.scan_once()  # t=15 -> repeat interval reached!
+        self.assertEqual(len(speaker.messages), 2)
+
 
 if __name__ == "__main__":
     unittest.main()

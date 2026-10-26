@@ -28,7 +28,25 @@ def main() -> int:
     )
     parser.add_argument("--scans", type=int, default=3, help="number of scans in demo mode")
     parser.add_argument("--model", help="local YOLO model path for camera mode")
-    parser.add_argument("--interval", type=float, default=0.0, help="minimum seconds between announcements")
+    parser.add_argument("--interval", type=float, default=3.0, help="minimum seconds between announcements on change")
+    parser.add_argument(
+        "--repeat-interval",
+        type=float,
+        default=15.0,
+        help="seconds before repeating identical detections (default: 15.0)",
+    )
+    parser.add_argument(
+        "--confidence",
+        type=float,
+        default=0.25,
+        help="detection confidence threshold between 0.0 and 1.0 (default: 0.25)",
+    )
+    parser.add_argument(
+        "--speech-rate",
+        type=int,
+        default=145,
+        help="words per minute for voice output (default: 145)",
+    )
     parser.add_argument(
         "--speak",
         action="store_true",
@@ -50,15 +68,17 @@ def main() -> int:
             parser.error("--model is required for camera mode")
         camera = OpenCVCamera(camera_source)
         if args.model.lower().endswith(".onnx"):
-            detector = OpenCVYoloDetector(args.model)
+            detector = OpenCVYoloDetector(args.model, confidence_threshold=args.confidence)
         else:
-            detector = UltralyticsDetector(args.model)
+            detector = UltralyticsDetector(args.model, confidence_threshold=args.confidence)
 
+    speaker = Pyttsx3Speaker(rate=args.speech_rate) if args.speak else ConsoleSpeaker()
     VisionPipeline(
         camera,
         detector,
-        Pyttsx3Speaker() if args.speak else ConsoleSpeaker(),
+        speaker,
         announcement_interval=args.interval,
+        repeat_unchanged_interval=args.repeat_interval,
     ).run(max_scans=args.scans if args.demo else None)
     return 0
 
