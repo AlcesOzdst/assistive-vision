@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "assistive-vision"
+version = "0.1.0"
+description = "Hardware-independent real-time object detection pipeline for assistive audio feedback"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+camera = [
+    "opencv-python>=4.8",
+    "ultralytics>=8.0",
+    "pyttsx3>=2.90",
+]
+pi = [
+    "pyttsx3>=2.90",
+]
+
+[project.scripts]
+assistive-vision = "assistive_vision.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
