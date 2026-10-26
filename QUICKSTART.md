@@ -72,46 +72,22 @@ Camera stream ready at http://<LAPTOP_IP>:8765/video
 2. Make sure it says *"Bluetooth Mode"*.
 3. Press and hold the **Bluetooth / Pairing button** for 3 seconds until the LED starts blinking rapidly or it chimes.
 
-### 2.2 Pair and connect on the Pi
+### 2.2 Run the automated speaker wizard (Recommended)
 
-Open a terminal on your Raspberry Pi and run:
-
-```bash
-bluetoothctl
-```
-
-You are now in the Bluetooth shell (`[bluetooth]#`). Run:
-
-```text
-scan on
-```
-
-Wait a few seconds until your speaker appears with its MAC address:
-
-```text
-[NEW] Device BA:A6:58:A5:50:39 ZEB-DELIGHT
-```
-
-Copy that MAC address and run:
-
-```text
-pair BA:A6:58:A5:50:39
-trust BA:A6:58:A5:50:39
-connect BA:A6:58:A5:50:39
-exit
-```
-
-Your speaker should chime and announce *"Connected"*.
-
-### 2.3 Test the audio
-
-Back in your normal Pi terminal prompt, test speech output:
+Run this single command on the Pi:
 
 ```bash
-espeak-ng "audio connected"
+cd ~/assistive-vision
+source .venv/bin/activate
+python tools/connect_speaker.py
 ```
 
-If you hear that through your Bluetooth speaker, your audio is ready!
+- Select option `[1]` to scan for speakers.
+- Type the number next to your speaker (e.g. `[1] ZEB-DELIGHT`).
+- The script automatically pairs, registers PipeWire audio drivers, connects, sets the default audio sink, and plays a test message!
+- Next time you boot, just press `[0]` to reconnect instantly.
+
+*(Manual alternative: you can also pair manually via `bluetoothctl` using `scan on`, `pair <MAC>`, `trust <MAC>`, `connect <MAC>`)*.
 
 ---
 
