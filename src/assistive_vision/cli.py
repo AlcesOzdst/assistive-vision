@@ -29,18 +29,18 @@ def main() -> int:
     )
     parser.add_argument("--scans", type=int, default=3, help="number of scans in demo mode")
     parser.add_argument("--model", help="local YOLO model path for camera mode")
-    parser.add_argument("--interval", type=float, default=3.0, help="minimum seconds between announcements on change")
+    parser.add_argument("--interval", type=float, default=6.0, help="minimum seconds between announcements on change (default: 6.0)")
     parser.add_argument(
         "--repeat-interval",
         type=float,
-        default=15.0,
-        help="seconds before repeating identical detections (default: 15.0)",
+        default=45.0,
+        help="seconds before repeating identical detections (default: 45.0)",
     )
     parser.add_argument(
         "--confidence",
         type=float,
-        default=0.25,
-        help="detection confidence threshold between 0.0 and 1.0 (default: 0.25)",
+        default=0.20,
+        help="detection confidence threshold between 0.0 and 1.0 (default: 0.20)",
     )
     parser.add_argument(
         "--speech-rate",

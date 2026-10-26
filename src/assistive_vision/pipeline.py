@@ -15,8 +15,8 @@ class VisionPipeline:
         detector: Detector,
         speaker: Speaker,
         *,
-        announcement_interval: float = 3.0,
-        repeat_unchanged_interval: float = 15.0,
+        announcement_interval: float = 6.0,
+        repeat_unchanged_interval: float = 45.0,
         clock: Callable[[], float] = monotonic,
     ) -> None:
         if announcement_interval < 0:

@@ -115,7 +115,7 @@ class OpenCVCamera:
 class UltralyticsDetector:
     """Optional YOLO adapter for a local Ultralytics model."""
 
-    def __init__(self, model_path: str, *, confidence_threshold: float = 0.25) -> None:
+    def __init__(self, model_path: str, *, confidence_threshold: float = 0.20) -> None:
         try:
             from ultralytics import YOLO
         except ImportError as exc:
@@ -163,7 +163,7 @@ class OpenCVYoloDetector:
         self,
         model_path: str,
         *,
-        confidence_threshold: float = 0.25,
+        confidence_threshold: float = 0.20,
         nms_threshold: float = 0.45,
         input_size: int = 640,
     ) -> None:
