@@ -42,42 +42,22 @@ def print_banner() -> None:
 
 
 def check_and_install_dependencies() -> None:
-    """Ensure required system packages and pipewire audio plugins exist."""
-    print("🔍 [1/5] Checking audio drivers and system dependencies...")
-    needed_pkgs = []
+    """Ensure required system packages and bluetooth tools exist without blocking on apt."""
+    print("🔍 [1/4] Checking audio drivers and Bluetooth stack...")
     
-    # Check for espeak-ng
-    if not shutil.which("espeak-ng") and not shutil.which("espeak"):
-        needed_pkgs.append("espeak-ng")
-        
-    # Check for bluetoothctl
     if not shutil.which("bluetoothctl"):
-        needed_pkgs.append("bluez")
+        print("   ❌ Error: bluetoothctl not found. Please install bluez.")
+        sys.exit(1)
 
-    # Check for pipewire bluetooth SPA plugin
-    check_spa = run_cmd("dpkg -s libspa-0.2-bluetooth", shell=True)
-    if check_spa.returncode != 0:
-        needed_pkgs.append("libspa-0.2-bluetooth")
-
-    check_pipewire_alsa = run_cmd("dpkg -s pipewire-alsa", shell=True)
-    if check_pipewire_alsa.returncode != 0:
-        needed_pkgs.append("pipewire-alsa")
-    if needed_pkgs:
-        # Check if internet is reachable before trying apt
-        test_net = run_cmd("ping -c 1 -W 2 8.8.8.8", shell=True)
-        if test_net.returncode == 0:
-            print(f"📦 Installing missing packages: {', '.join(needed_pkgs)}...")
-            pkgs_str = " ".join(needed_pkgs)
-            subprocess.run(f"sudo apt update && sudo apt install -y {pkgs_str}", shell=True)
-        else:
-            print(f"⚠️ Offline: Cannot reach package mirrors. Continuing with installed drivers...")
+    if not shutil.which("espeak-ng") and not shutil.which("espeak"):
+        print("   ⚠️ Note: espeak-ng not detected. Speech test may be silent.")
     else:
-        print("   ✅ Audio drivers and Bluetooth packages are installed.")
+        print("   ✅ Bluetooth and audio drivers ready.")
 
 
 def fix_audio_stack() -> None:
     """Restart bluetooth and PipeWire/WirePlumber to register A2DP profiles."""
-    print("🔄 [2/5] Initializing Bluetooth and PipeWire audio services...")
+    print("🔄 [2/4] Initializing Bluetooth and PipeWire audio services...")
     
     # Enable linger so user audio services stay active across SSH logouts
     user = os.environ.get("USER", "pi")
@@ -115,7 +95,7 @@ def save_speaker(mac: str, name: str) -> None:
 
 def scan_bluetooth_devices(duration: int = 8) -> list[tuple[str, str]]:
     """Scan for nearby Bluetooth devices and return a list of (mac, name)."""
-    print(f"\n📡 [3/5] Scanning for Bluetooth devices ({duration} seconds)...")
+    print(f"\n📡 [3/4] Scanning for Bluetooth devices ({duration} seconds)...")
     print("   👉 Make sure your speaker is in PAIRING MODE now!")
     print("   👉 (Disconnect it from your phone/laptop first)")
 
@@ -170,7 +150,7 @@ def scan_bluetooth_devices(duration: int = 8) -> list[tuple[str, str]]:
 
 def pair_and_connect(mac: str, name: str) -> bool:
     """Pair, trust, and connect to a device via bluetoothctl."""
-    print(f"\n🔗 [4/5] Connecting to {name} ({mac})...")
+    print(f"\n🔗 Connecting to {name} ({mac})...")
 
     commands = [
         f"pair {mac}",
@@ -215,7 +195,7 @@ def pair_and_connect(mac: str, name: str) -> bool:
 
 def set_default_sink_and_test() -> None:
     """Set the Bluetooth device as the default audio sink and test speech."""
-    print("\n🔊 [5/5] Testing audio output through your speaker...")
+    print("\n🔊 [4/4] Testing audio output through your speaker...")
     time.sleep(2)
 
     # Detect WirePlumber sink ID for Bluetooth
