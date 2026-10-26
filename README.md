@@ -111,53 +111,70 @@ Make sure the pre-converted `yolov8n.onnx` model file is present in `~/assistive
 
 ---
 
-### Step 3: Connect Bluetooth Speaker (Simplified Interactive Wizard)
+### Step 3: Run the Autonomous Pi Assistant (1-Command Startup)
 
-Bluetooth pairing on Linux can be tricky due to audio drivers, sleep timeouts, and PipeWire profile registration.
+We built an all-in-one runner that autonomously executes the proven Bluetooth handshake, connects to your speaker, and starts the real-time detection pipeline automatically.
 
-We built an **automated interactive setup wizard** that handles everything for you.
+#### Option A: 100% Autonomous Mode (Zero-Click Startup)
 
-#### 3.1 Put your speaker in pairing mode
-
-1. Turn off Bluetooth on your phone and laptop so they don't hijack your speaker.
-2. Turn on your Bluetooth speaker and hold its Bluetooth/Pairing button until its light flashes rapidly or it chimes.
-
-#### 3.2 Run the interactive wizard on the Pi
+If your speaker is on and in range, run:
 
 ```bash
 cd ~/assistive-vision
 source .venv/bin/activate
-python tools/connect_speaker.py
+python tools/run_pi.py --auto
 ```
 
-*(Or run `./scripts/connect_speaker.sh`).*
+*(Or run `./scripts/run_pi.sh --auto`).*
 
-#### What the wizard does automatically
+**What happens autonomously:**
 
-1. **Checks & verifies audio drivers**: Ensures `libspa-0.2-bluetooth` and PipeWire are installed and active.
-2. **Registers audio endpoints**: Restarts Bluetooth and user audio daemons to prevent `br-connection-profile-unavailable`.
-3. **Scans & displays devices**: Shows a clean numbered list of detected speakers by name (e.g., `[1] ZEB-DELIGHT`).
-4. **Pairs, trusts, and connects**: Type the number of your speaker and hit Enter.
-5. **Sets default audio output**: Configures PipeWire/WirePlumber to route system speech to the speaker.
-6. **Tests audio output**: Speaks a test announcement through your speaker to confirm sound is working.
-7. **Saves for 1-click reconnect**: Next time, simply press `[0]` to reconnect instantly!
+1. Resolves PipeWire and PulseAudio collisions automatically.
+2. Restarts Bluetooth and PipeWire audio services to register audio endpoints (`/sep1`).
+3. Connects to your speaker (`ZEB-DELIGHT`).
+4. Speaks confirmation through your speaker (*"Speaker connected. Starting assistive vision"*).
+5. Automatically connects to the laptop camera stream and begins detection!
 
 ---
 
-### Step 4: Run Real-Time Assistive Vision
+#### Option B: Interactive Control Panel Menu
 
-Once your speaker announces that it is connected, start detection:
+If you want to choose options, change intervals, scan for new speakers, or test audio, run without flags:
 
 ```bash
-python -m assistive_vision \
-  --stream-url http://<YOUR_LAPTOP_IP>:8765/video \
-  --model yolov8n.onnx \
-  --speak
+python tools/run_pi.py
 ```
 
-*(Replace `<YOUR_LAPTOP_IP>` with your laptop's Wi-Fi IP from Step 1.3, e.g. `172.17.4.137`).*
+*(Or run `./scripts/run_pi.sh`).*
 
-#### What you will experience
+You will see an interactive menu:
+
+```text
+=================================================================
+         👁️ ASSISTIVE VISION — CONTROL PANEL
+=================================================================
+  • Speaker:     ZEB-DELIGHT (BA:A6:58:A5:50:39)
+  • Laptop IP:   172.17.4.137
+  • Detection:   Interval: 6.0s | Repeat: 45.0s | Conf: 0.20
+=================================================================
+  [1] 🚀 Auto-Connect & Start Assistive Vision (1-Click)
+  [2] 📡 Scan & Pair New Bluetooth Speaker
+  [3] 🔄 Full Reset & Reconnect Speaker (Fix profile errors)
+  [4] ⚙️ Change Laptop IP or Detection Interval
+  [5] 🔊 Test Speaker Speech Output
+  [q] Quit
+```
+
+- Press `[1]` to connect and launch instantly.
+- Press `[2]` to scan and pair a new speaker from a numbered list.
+- Press `[3]` if the speaker ever throws a profile error — it resets and re-pairs cleanly.
+- Press `[4]` to adjust your Laptop IP, announcement interval, or confidence threshold.
+
+---
+
+### Step 4: Real-Time Detection & Natural Speech
+
+Once running:
 
 - Point your laptop's camera around the room (at people, chairs, bottles, cups, cell phones, laptops, books).
 - The Pi analyzes the video feed in real-time.
